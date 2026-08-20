@@ -49,15 +49,38 @@
     </div>
   </main>
 
-  <!-- Ventana Modal Elegante de Eliminación (Oculta por defecto) -->
+  <!-- Modal Elegante para Datos del Invitado (Nombre y Mensaje) -->
+  <div id="modalUploadInfo" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl p-6 max-w-xs w-full shadow-xl border border-rose-100 text-center space-y-4">
+      <h3 class="font-cursive text-3xl text-rose-900">¡Casi listo! ✨</h3>
+      <p class="text-xs text-gray-500">Déjanos saber quién comparte este lindo recuerdo:</p>
+      
+      <div class="space-y-3 text-left">
+        <div>
+          <label class="text-[10px] uppercase font-semibold text-gray-400 tracking-wider">Tu Nombre o Apodo</label>
+          <input type="text" id="inputNombre" placeholder="Ej. Tía María" class="w-full mt-1 px-3 py-2 border border-rose-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-400 bg-rose-50/20">
+        </div>
+        <div>
+          <label class="text-[10px] uppercase font-semibold text-gray-400 tracking-wider">Dedicatoria / Pie de foto (Opcional)</label>
+          <textarea id="inputMensaje" rows="2" placeholder="¡Felicidades a los novios!..." class="w-full mt-1 px-3 py-2 border border-rose-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-400 bg-rose-50/20 resize-none"></textarea>
+        </div>
+      </div>
+      
+      <button id="btnSaveMedia" class="w-full py-2.5 text-xs font-medium text-white bg-gradient-to-r from-rose-500 to-pink-600 rounded-lg hover:opacity-90 transition shadow">
+        Publicar Recuerdo 💖
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal Elegante de Eliminación -->
   <div id="modalDelete" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm hidden flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl p-6 max-w-xs w-full shadow-xl border border-rose-100 text-center space-y-4">
-      <h3 class="font-cursive text-3xl text-rose-900">Advertencia</h3>
+      <h3 class="font-cursive text-3xl text-rose-900">Cuidado!</h3>
       <p class="text-xs text-gray-500">Ingresa la contraseña para borrar este recuerdo:</p>
       
       <input type="password" id="inputAdminKey" placeholder="••••••••" class="w-full text-center px-4 py-2 border border-rose-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-400 bg-rose-50/30">
       
-      <p id="errorMsg" class="text-[11px] text-rose-600 hidden font-medium">Contraseña incorrecta, no tienes los permisos.</p>
+      <p id="errorMsg" class="text-[11px] text-rose-600 hidden font-medium">Contraseña incorrecta, no tienes permisos.</p>
       
       <div class="flex gap-2 pt-2">
         <button id="btnCancelDelete" class="flex-1 py-2 text-xs font-medium text-gray-500 bg-gray-100 rounded-lg hover:bg-gray-200 transition">Cancelar</button>
@@ -73,6 +96,7 @@
 
     const CLAVE_ADMIN = "boda2026";
     let targetDocId = null;
+    let tempMediaInfo = null;
 
     const firebaseConfig = {
       apiKey: "AIzaSyAcWss9c7FqrHZe0wBVEVxxKkj8JZjKcEs",
@@ -85,6 +109,11 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+
+    // Modal Upload
+    const modalUpload = document.getElementById("modalUploadInfo");
+    const inputNombre = document.getElementById("inputNombre");
+    const inputMensaje = document.getElementById("inputMensaje");
 
     // Widget Cloudinary
     const myWidget = cloudinary.createUploadWidget({
@@ -109,17 +138,29 @@
       }
     }, (error, result) => {
         if (!error && result && result.event === "success") {
-          const nombre = prompt("Tu nombre o apodo:") || "Invitado especial";
-          const mensaje = prompt("Escribe una dedicatoria (opcional):") || "";
-          
-          addDoc(collection(db, "fotos"), {
-            url: result.info.secure_url,
-            tipo: result.info.resource_type,
-            nombre: nombre,
-            mensaje: mensaje,
-            fecha: serverTimestamp()
-          });
+          tempMediaInfo = result.info;
+          inputNombre.value = "";
+          inputMensaje.value = "";
+          modalUpload.classList.remove("hidden");
         }
+    });
+
+    document.getElementById("btnSaveMedia").addEventListener("click", async () => {
+      if (!tempMediaInfo) return;
+      
+      const nombre = inputNombre.value.trim() || "Invitado especial";
+      const mensaje = inputMensaje.value.trim();
+
+      await addDoc(collection(db, "fotos"), {
+        url: tempMediaInfo.secure_url,
+        tipo: tempMediaInfo.resource_type,
+        nombre: nombre,
+        mensaje: mensaje,
+        fecha: serverTimestamp()
+      });
+
+      tempMediaInfo = null;
+      modalUpload.classList.add("hidden");
     });
 
     document.getElementById("upload_widget").addEventListener("click", () => myWidget.open(), false);
@@ -188,8 +229,8 @@
       });
     });
 
-    // Control de la Modal Personalizada
-    const modal = document.getElementById("modalDelete");
+    // Control Modal Borrar
+    const modalDelete = document.getElementById("modalDelete");
     const inputKey = document.getElementById("inputAdminKey");
     const errorMsg = document.getElementById("errorMsg");
 
@@ -197,20 +238,20 @@
       targetDocId = docId;
       inputKey.value = "";
       errorMsg.classList.add("hidden");
-      modal.classList.remove("hidden");
+      modalDelete.classList.remove("hidden");
     };
 
     document.getElementById("btnCancelDelete").addEventListener("click", () => {
-      modal.classList.add("hidden");
+      modalDelete.classList.add("hidden");
     });
 
     document.getElementById("btnConfirmDelete").addEventListener("click", async () => {
       if (inputKey.value === CLAVE_ADMIN) {
         try {
           await deleteDoc(doc(db, "fotos", targetDocId));
-          modal.classList.add("hidden");
+          modalDelete.classList.add("hidden");
         } catch (e) {
-          alert("Error al eliminar.");
+          console.error(e);
         }
       } else {
         errorMsg.classList.remove("hidden");
