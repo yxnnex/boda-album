@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Álbum de Boda 📸</title>
+  <!-- Tailwind CSS para el diseño estilo Instagram -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Widget de Subida de Cloudinary -->
+  <script src="https://upload-widget.cloudinary.com/global/all.js" type="text/javascript"></script>
+</head>
+<body class="bg-gray-100 min-h-screen text-gray-800 pb-20">
+
+  <!-- Encabezado Fijo -->
+  <header class="sticky top-0 z-50 bg-white border-b border-gray-200 px-4 py-3 flex justify-between items-center shadow-sm">
+    <h1 class="text-xl font-bold font-serif tracking-wide text-gray-900">Nuestra Boda 💍</h1>
+    <button id="upload_widget" class="bg-gradient-to-r from-pink-500 to-rose-500 text-white px-4 py-1.5 rounded-full font-medium text-sm shadow hover:opacity-90 transition">
+      + Subir Foto
+    </button>
+  </header>
+
+  <!-- Feed de Fotos Estilo Instagram -->
+  <main class="max-w-md mx-auto mt-4 px-2 space-y-6" id="feed">
+    <div class="text-center text-gray-400 mt-10" id="loading">
+      <p class="animate-pulse">Cargando el álbum...</p>
+    </div>
+  </main>
+
+  <!-- Script Firebase + Lógica -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    // Tu configuración de Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyAcWss9c7FqrHZe0wBVEVxxKkj8JZjKcEs",
+      authDomain: "boda-album-2c21b.firebaseapp.com",
+      projectId: "boda-album-2c21b",
+      storageBucket: "boda-album-2c21b.firebasestorage.app",
+      messagingSenderId: "753137838470",
+      appId: "1:753137838470:web:8a238ceac201a12cfde407"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // Widget de Cloudinary integrado con tus claves
+    const myWidget = cloudinary.createUploadWidget({
+      cloudName: 'dz6bcpnj', 
+      uploadPreset: 'yofsbhq3',
+      sources: ['local', 'camera'],
+      multiple: false,
+      styles: {
+        palette: { window: "#FFFFFF", windowBorder: "#909090", tabIcon: "#0078FF", menuBg: "#FFFFFF", textDark: "#000000" }
+      }
+    }, (error, result) => {
+        if (!error && result && result.event === "success") {
+          const nombre = prompt("Ingresa tu nombre o apodo:") || "Invitado anónimo";
+          const mensaje = prompt("Escribe un mensaje para los novios (opcional):") || "";
+          
+          addDoc(collection(db, "fotos"), {
+            url: result.info.secure_url,
+            nombre: nombre,
+            mensaje: mensaje,
+            fecha: serverTimestamp()
+          });
+        }
+    });
+
+    document.getElementById("upload_widget").addEventListener("click", () => myWidget.open(), false);
+
+    // Renderizado en vivo ordenado por fecha de subida
+    const q = query(collection(db, "fotos"), orderBy("fecha", "desc"));
+    onSnapshot(q, (snapshot) => {
+      const feed = document.getElementById("feed");
+      feed.innerHTML = "";
+      
+      if (snapshot.empty) {
+        feed.innerHTML = '<p class="text-center text-gray-400 my-10">Sé el primero en subir una foto 📸</p>';
+        return;
+      }
+
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        const fechaFormateada = data.fecha ? new Date(data.fecha.seconds * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Ahora';
+        
+        feed.innerHTML += `
+          <article class="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+            <!-- Header de Tarjeta -->
+            <div class="flex items-center px-4 py-3 space-x-3">
+              <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 to-pink-600 flex items-center justify-center text-white font-bold text-xs uppercase">
+                ${data.nombre.charAt(0)}
+              </div>
+              <div class="flex-1">
+                <p class="text-sm font-semibold text-gray-900 leading-none">${data.nombre}</p>
+                <span class="text-xs text-gray-400">${fechaFormateada}</span>
+              </div>
+            </div>
+
+            <!-- Foto -->
+            <div class="w-full bg-black aspect-square flex items-center justify-center">
+              <img src="${data.url}" class="w-full h-full object-cover" loading="lazy" alt="Foto de la boda" />
+            </div>
+
+            <!-- Footer / Comentario -->
+            ${data.mensaje ? `
+              <div class="p-4 pt-3 border-t border-gray-50">
+                <p class="text-sm text-gray-800"><span class="font-semibold mr-1">${data.nombre}:</span>${data.mensaje}</p>
+              </div>
+            ` : ''}
+          </article>
+        `;
+      });
+    });
+  </script>
+</body>
+</html>
