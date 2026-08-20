@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Bodas de Azabache 💍</title>
   
-  <!-- Fuentes de Google: Great Vibes (Cursiva romántica) + Plus Jakarta Sans -->
+  <!-- Fuentes de Google: Great Vibes (Cursiva) + Plus Jakarta Sans -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -37,7 +37,7 @@
     <p class="text-xs font-semibold uppercase tracking-widest text-amber-700 mb-3">29 de Agosto de 2026</p>
     <div class="w-12 h-[1px] bg-amber-300 mx-auto mb-4"></div>
     <p class="text-sm text-gray-600 italic leading-relaxed">
-      Comparte tus fotos con todos nosotros, sube tus fotos y videos!. <br>
+      Comparte tus fotos con todos nosotros, sube tus fotos y videos. <br>
       <span class="font-serif font-semibold text-rose-800 not-italic">¡Salud! 🥂</span>
     </p>
   </section>
@@ -49,13 +49,30 @@
     </div>
   </main>
 
+  <!-- Ventana Modal Elegante de Eliminación (Oculta por defecto) -->
+  <div id="modalDelete" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl p-6 max-w-xs w-full shadow-xl border border-rose-100 text-center space-y-4">
+      <h3 class="font-cursive text-3xl text-rose-900">Administración</h3>
+      <p class="text-xs text-gray-500">Ingresa la contraseña para borrar este recuerdo:</p>
+      
+      <input type="password" id="inputAdminKey" placeholder="••••••••" class="w-full text-center px-4 py-2 border border-rose-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-400 bg-rose-50/30">
+      
+      <p id="errorMsg" class="text-[11px] text-rose-600 hidden font-medium">Contraseña incorrecta</p>
+      
+      <div class="flex gap-2 pt-2">
+        <button id="btnCancelDelete" class="flex-1 py-2 text-xs font-medium text-gray-500 bg-gray-100 rounded-lg hover:bg-gray-200 transition">Cancelar</button>
+        <button id="btnConfirmDelete" class="flex-1 py-2 text-xs font-medium text-white bg-rose-600 rounded-lg hover:bg-rose-700 transition shadow">Eliminar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Script Firebase + Lógica -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getFirestore, collection, addDoc, doc, deleteDoc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // Clave de administrador para eliminar elementos
     const CLAVE_ADMIN = "boda2026";
+    let targetDocId = null;
 
     const firebaseConfig = {
       apiKey: "AIzaSyAcWss9c7FqrHZe0wBVEVxxKkj8JZjKcEs",
@@ -69,7 +86,7 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // Widget Cloudinary (Soporta Fotos + Videos)
+    // Widget Cloudinary
     const myWidget = cloudinary.createUploadWidget({
       cloudName: 'dz6bcpnj', 
       uploadPreset: 'yofsbhq3',
@@ -107,7 +124,7 @@
 
     document.getElementById("upload_widget").addEventListener("click", () => myWidget.open(), false);
 
-    // Escuchador en vivo
+    // Renderizado en vivo
     const q = query(collection(db, "fotos"), orderBy("fecha", "desc"));
     onSnapshot(q, (snapshot) => {
       const feed = document.getElementById("feed");
@@ -127,7 +144,6 @@
         const data = docSnap.data();
         const docId = docSnap.id;
         const fechaFormateada = data.fecha ? new Date(data.fecha.seconds * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Reciente';
-        
         const esVideo = data.tipo === 'video' || (data.url && data.url.match(/\.(mp4|webm|ogg|mov)$/i));
 
         const contenidoMedia = esVideo 
@@ -149,8 +165,7 @@
                 </div>
               </div>
               
-              <!-- Botón Eliminar protegida -->
-              <button onclick="eliminarPublicacion('${docId}')" title="Eliminar publicación" class="text-gray-300 hover:text-rose-600 p-1 transition-colors">
+              <button onclick="abrirModalBorrar('${docId}')" title="Eliminar publicación" class="text-gray-300 hover:text-rose-600 p-1 transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
@@ -173,25 +188,34 @@
       });
     });
 
-    // Función global para eliminar con contraseña
-    window.eliminarPublicacion = async (docId) => {
-      const password = prompt("Ingresa la contraseña de administrador para eliminar:");
-      if (!password) return;
+    // Control de la Modal Personalizada
+    const modal = document.getElementById("modalDelete");
+    const inputKey = document.getElementById("inputAdminKey");
+    const errorMsg = document.getElementById("errorMsg");
 
-      if (password === CLAVE_ADMIN) {
-        if (confirm("¿Estás seguro de que deseas borrar este recuerdo?")) {
-          try {
-            await deleteDoc(doc(db, "fotos", docId));
-            alert("Publicación eliminada correctamente.");
-          } catch (err) {
-            alert("Ocurrió un error al intentar eliminar la publicación.");
-            console.error(err);
-          }
+    window.abrirModalBorrar = (docId) => {
+      targetDocId = docId;
+      inputKey.value = "";
+      errorMsg.classList.add("hidden");
+      modal.classList.remove("hidden");
+    };
+
+    document.getElementById("btnCancelDelete").addEventListener("click", () => {
+      modal.classList.add("hidden");
+    });
+
+    document.getElementById("btnConfirmDelete").addEventListener("click", async () => {
+      if (inputKey.value === CLAVE_ADMIN) {
+        try {
+          await deleteDoc(doc(db, "fotos", targetDocId));
+          modal.classList.add("hidden");
+        } catch (e) {
+          alert("Error al eliminar.");
         }
       } else {
-        alert("Contraseña incorrecta, debes ser admin.");
+        errorMsg.classList.remove("hidden");
       }
-    };
+    });
   </script>
 </body>
 </html>
