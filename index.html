@@ -42,14 +42,22 @@
     </p>
   </section>
 
-  <!-- Feed Principal en Cuadrícula (1 col móvil, 2 col tablet, 3 col PC) -->
+  <!-- Feed Principal en Cuadrícula -->
   <main class="max-w-6xl mx-auto mt-8 px-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" id="feed">
     <div class="col-span-full text-center text-rose-800/50 mt-10" id="loading">
       <p class="animate-pulse font-cursive text-xl">Cargando momentos especiales...</p>
     </div>
   </main>
 
-  <!-- Modal Elegante para Datos del Invitado (Nombre y Mensaje) -->
+  <!-- Modal Pantalla Completa (Lightbox) -->
+  <div id="lightbox" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md hidden flex items-center justify-center p-4 cursor-pointer" onclick="cerrarLightbox()">
+    <button class="absolute top-4 right-6 text-white text-3xl font-light hover:text-rose-300 transition">&times;</button>
+    <div class="max-w-4xl max-h-[90vh] flex items-center justify-center overflow-hidden" onclick="event.stopPropagation()">
+      <div id="lightboxContent" class="w-full h-full flex items-center justify-center"></div>
+    </div>
+  </div>
+
+  <!-- Modal Datos del Invitado -->
   <div id="modalUploadInfo" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm hidden flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl p-6 max-w-xs w-full shadow-xl border border-rose-100 text-center space-y-4">
       <h3 class="font-cursive text-3xl text-rose-900">¡Casi listo! ✨</h3>
@@ -61,7 +69,7 @@
           <input type="text" id="inputNombre" placeholder="Ej. Tía María" class="w-full mt-1 px-3 py-2 border border-rose-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-400 bg-rose-50/20">
         </div>
         <div>
-          <label class="text-[10px] uppercase font-semibold text-gray-400 tracking-wider">Dedicatoria / Pie de Foto (Opcional)</label>
+          <label class="text-[10px] uppercase font-semibold text-gray-400 tracking-wider">Dedicatoria (Opcional)</label>
           <textarea id="inputMensaje" rows="2" placeholder="¡Felicidades a los novios!..." class="w-full mt-1 px-3 py-2 border border-rose-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-400 bg-rose-50/20 resize-none"></textarea>
         </div>
       </div>
@@ -72,15 +80,15 @@
     </div>
   </div>
 
-  <!-- Modal Elegante de Eliminación -->
+  <!-- Modal Eliminación -->
   <div id="modalDelete" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm hidden flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl p-6 max-w-xs w-full shadow-xl border border-rose-100 text-center space-y-4">
-      <h3 class="font-cursive text-3xl text-rose-900">⚠️cuidado</h3>
+      <h3 class="font-cursive text-3xl text-rose-900">Administración</h3>
       <p class="text-xs text-gray-500">Ingresa la contraseña para borrar este recuerdo:</p>
       
       <input type="password" id="inputAdminKey" placeholder="••••••••" class="w-full text-center px-4 py-2 border border-rose-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-400 bg-rose-50/30">
       
-      <p id="errorMsg" class="text-[11px] text-rose-600 hidden font-medium">Contraseña incorrecta, no tienes permisos para ejecutar esta acción.</p>
+      <p id="errorMsg" class="text-[11px] text-rose-600 hidden font-medium">Contraseña incorrecta</p>
       
       <div class="flex gap-2 pt-2">
         <button id="btnCancelDelete" class="flex-1 py-2 text-xs font-medium text-gray-500 bg-gray-100 rounded-lg hover:bg-gray-200 transition">Cancelar</button>
@@ -188,7 +196,7 @@
         const esVideo = data.tipo === 'video' || (data.url && data.url.match(/\.(mp4|webm|ogg|mov)$/i));
 
         const contenidoMedia = esVideo 
-          ? `<video src="${data.url}" controls playsinline class="w-full h-full object-cover"></video>`
+          ? `<video src="${data.url}" class="w-full h-full object-cover pointer-events-none"></video>`
           : `<img src="${data.url}" class="w-full h-full object-cover" loading="lazy" alt="Recuerdo de la boda" />`;
 
         feed.innerHTML += `
@@ -213,8 +221,12 @@
               </button>
             </div>
 
-            <div class="w-full bg-black/5 aspect-square flex items-center justify-center overflow-hidden">
+            <!-- Contenedor Multimedia interactivo con Lightbox -->
+            <div onclick="abrirLightbox('${data.url}', ${esVideo})" class="w-full bg-black/5 aspect-square flex items-center justify-center overflow-hidden cursor-pointer relative group">
               ${contenidoMedia}
+              <div class="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-medium">
+                🔍 Ver completo
+              </div>
             </div>
 
             ${data.mensaje ? `
@@ -228,6 +240,23 @@
         `;
       });
     });
+
+    // Control Lightbox
+    window.abrirLightbox = (url, esVideo) => {
+      const container = document.getElementById("lightboxContent");
+      if (esVideo) {
+        container.innerHTML = `<video src="${url}" controls autoplay class="max-h-[85vh] max-w-full rounded-lg shadow-2xl"></video>`;
+      } else {
+        container.innerHTML = `<img src="${url}" class="max-h-[85vh] max-w-full object-contain rounded-lg shadow-2xl" />`;
+      }
+      document.getElementById("lightbox").classList.remove("hidden");
+    };
+
+    window.cerrarLightbox = () => {
+      const lightbox = document.getElementById("lightbox");
+      lightbox.classList.add("hidden");
+      document.getElementById("lightboxContent").innerHTML = "";
+    };
 
     // Control Modal Borrar
     const modalDelete = document.getElementById("modalDelete");
