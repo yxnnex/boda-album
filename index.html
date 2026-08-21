@@ -174,7 +174,7 @@
     document.getElementById("upload_widget").addEventListener("click", () => myWidget.open(), false);
 
     // Renderizado en vivo
-    const q = query(collection(db, "fotos"), orderBy("fecha", "desc"));
+    const q = query(collection(db, "fotos"), orderBy("fecha", "asd"));
     onSnapshot(q, (snapshot) => {
       const feed = document.getElementById("feed");
       feed.innerHTML = "";
