@@ -21,7 +21,7 @@
     body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #faf8f5; }
     .font-cursive { font-family: 'Great Vibes', cursive; }
     
-    /* Estilos para ocultar la flecha por defecto en el 'ver más' */
+    /* Ocultar el icono por defecto de los detalles */
     summary::-webkit-details-marker { display: none; }
     summary { list-style: none; }
   </style>
@@ -204,7 +204,7 @@
           ? `<video src="${data.url}" class="w-full h-full object-cover pointer-events-none"></video>`
           : `<img src="${data.url}" class="w-full h-full object-cover" loading="lazy" alt="Recuerdo de la boda" />`;
 
-        // Generación del bloque del mensaje con "ver más..." si es largo (>90 caracteres)
+        // Renderizado inteligente del mensaje ("Ver más" sin duplicados)
         let bloqueMensaje = '';
         if (data.mensaje) {
           const LIMITE_CARACTERES = 90;
@@ -213,12 +213,12 @@
             bloqueMensaje = `
               <div class="p-4 pt-3 bg-white border-t border-gray-50 mt-auto">
                 <details class="group">
-                  <summary class="cursor-pointer text-xs text-gray-700 leading-relaxed outline-none">
+                  <summary class="cursor-pointer text-xs text-gray-700 leading-relaxed outline-none group-open:hidden">
                     <span class="font-semibold text-gray-900 mr-1.5">${data.nombre}:</span>${corto}...
-                    <span class="text-gray-400 font-medium group-open:hidden hover:underline ml-1">ver más</span>
+                    <span class="text-rose-600 font-medium hover:underline ml-1">ver más</span>
                   </summary>
-                  <p class="text-xs text-gray-700 leading-relaxed mt-1">
-                    ${data.mensaje}
+                  <p class="text-xs text-gray-700 leading-relaxed">
+                    <span class="font-semibold text-gray-900 mr-1.5">${data.nombre}:</span>${data.mensaje}
                   </p>
                 </details>
               </div>
